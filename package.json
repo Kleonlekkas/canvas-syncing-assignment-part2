@@ -17,12 +17,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Kleonlekkas/canvas-syncing-assignment-part2.git"
+    "url": "git+https://github.com/Kleonlekkas/RTMSyncingDataII.git"
   },
   "author": "Kyle Lekka",
   "license": "UNLICENSED",
   "bugs": {
-    "url": "https://github.com/Kleonlekkas/canvas-syncing-assignment-part2/issues"
+    "url": "https://github.com/Kleonlekkas/RTMSyncingDataII.git/issues"
   },
-  "homepage": "https://github.com/Kleonlekkas/canvas-syncing-assignment-part2#readme"
+  "homepage": "https://github.com/Kleonlekkas/RTMSyncingDataII.git#readme"
 }
