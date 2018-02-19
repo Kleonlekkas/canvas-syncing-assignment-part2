@@ -6,9 +6,6 @@ const fs = require('fs'); // grab our file system
 
 const PORT = process.env.PORT || process.env.NODE_PORT || 3000;
 
-
-const draws = {};
-
 const limit = Math.floor((Math.random() * 99) * 3) + 300; // some arbitrary random but big ish limit
 const color = `rgb(${0}, ${0}, ${0})`;
 const currentValue = 0;
