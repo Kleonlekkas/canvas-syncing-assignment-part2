@@ -1,8 +1,15 @@
 {
-  "name": "canvas-syncing-assignment-part2",
+  "name": "syncingdataii",
   "version": "1.0.0",
-  "description": "syncingdata part2",
+  "description": "syncingdata2",
   "main": "index.js",
+  "dependencies": {
+    "eslint": "^4.18.0",
+    "eslint-config-airbnb": "^16.1.0",
+    "eslint-plugin-import": "^2.8.0",
+    "socket.io": "^2.0.4"
+  },
+  "devDependencies": {},
   "scripts": {
     "start": "node ./src/server.js",
     "pretest": "eslint ./src --fix",
@@ -12,18 +19,10 @@
     "type": "git",
     "url": "git+https://github.com/Kleonlekkas/canvas-syncing-assignment-part2.git"
   },
-  "author": "Kyle Lekkas",
+  "author": "Kyle Lekka",
   "license": "UNLICENSED",
   "bugs": {
     "url": "https://github.com/Kleonlekkas/canvas-syncing-assignment-part2/issues"
   },
-  "homepage": "https://github.com/Kleonlekkas/canvas-syncing-assignment-part2#readme",
-  "devDependencies": {
-    "eslint": "^4.17.0",
-    "eslint-config-airbnb": "^16.1.0",
-    "eslint-plugin-import": "^2.8.0"
-  },
-  "dependencies": {
-    "socket.io": "^2.0.4"
-  }
+  "homepage": "https://github.com/Kleonlekkas/canvas-syncing-assignment-part2#readme"
 }
