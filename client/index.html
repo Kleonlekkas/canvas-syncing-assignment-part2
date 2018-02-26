@@ -9,24 +9,52 @@
 		let socket;
 		
 		var canvas, ctx;
-		var feed, amount;
 		
+		//Our canvas drawing
 		let bigBoi = {};
+		//Hold all our users and their scores
+		let users = {};
 		
 		let color;
 		
 		let score = 0;
 		let scoreText;
+		let amount = 0;
+		
+		//feed buttons
+		let feedFive, feedFifteen, feedFifty, feedHundred;
+		
+		//User buttons
+		let connectUser, usernameText;
+		
+		//Info <p>
+		let infoText;
+		
+		//Gamestate boolean
+		let gameIsActive = false;
 		
 		
 		const init = () => {
+			//Canvas initialization
 			canvas = document.querySelector('#mainCanvas');
-			feed = document.querySelector('#feed');
-			scoreText = document.querySelector('#myScore');
-			feed.addEventListener('click', feedClicked);
 			ctx = canvas.getContext('2d');
 			ctx.fillStyle = "black";
-				
+			
+			//Feed Buttons
+			setUpFeedButtons();
+			hideFeedButtons();
+			
+			//Score and User
+			scoreText = document.querySelector('#myScore');
+			
+			connectUser = document.querySelector('#connect');
+			connectUser.addEventListener('click', attemptAdd);
+			
+			//information text update
+			infoText = document.querySelector('#information');
+
+			
+			//Server Thangs
 			socket = io.connect();
 			
 			socket.on('updated', updateBoi);
@@ -34,8 +62,43 @@
 			socket.on('win', triggerWin);
 			socket.on('lose', triggerLose);
 			
+			socket.on('acceptUser', triggerAccept);
+			socket.on('rejectUser', triggerReject);
+			
+			socket.on('sendUserList', updateUsers);
+			
+			setInterval(updateScores, 1500);
+			
 		};
 		
+		const updateScores = () => {
+			socket.emit("requestUsersUpdate");
+			
+						
+			//now update text on screen
+			var html = "<h2>Scores</h2>";
+			//temp array to store our sorted users
+			var tempArray;
+			
+			html += "<ol>"
+			for (var inc = 0; inc < Object.keys(users).length; inc++) {
+				//html += "<li>" + Object.keys(users)[inc].name + "</li>";
+				html += "<li>" + users + "</li>";
+			}
+
+			html += "</ol>"
+			document.querySelector('#scoreDiv').innerHTML = html;
+		};
+		
+		const updateUsers = (data) => {
+			users = data;
+			console.log("here be user data");
+			console.log(data);
+			//??????????????What? why does the code stop executing past this point?
+			console.log("whats happening to users tho");
+			console.log(users);
+			console.log(data);
+		};
 		
 		const updateBoi = (data) => {
 			bigBoi = data;
@@ -44,22 +107,23 @@
 		
 		const triggerLose = () => {
 			scoreText.innerHTML = "LOSER";
-			feed.style.visibility = 'hidden';
+			hideFeedButtons();
+
 		};
 		
 		const triggerWin = () => {
 			//here is likely where id pass in an array
 			//of objects containing user scores, then sort them to display to everyone
 			scoreText.innerHTML = `Winner! ${score}`;
-			feed.style.visibility = 'hidden';
-		}
+			hideFeedButtons();
+		};
 		
 		const draw = () => {
 			ctx.clearRect(0,0, canvas.width, canvas.height);
 			
-			console.log(bigBoi);
-			console.log(bigBoi.bigColor);
-			console.log(bigBoi.bigLimit);
+			//console.log(bigBoi);
+			//console.log(bigBoi.bigColor);
+			//console.log(bigBoi.bigLimit);
 
 			let xPos = canvas.width/2 - bigBoi.bigLimit/4
 			let yPos = canvas.height/2 - bigBoi.bigLimit/4
@@ -75,7 +139,6 @@
 		
 		const feedClicked = (e) => {
 		
-			amount = document.querySelector('#amount').value;
 			//check if num
 			if (isNaN(amount) || amount == '') {
 				return;
@@ -83,11 +146,89 @@
 			
 			amount = parseInt(amount);
 			
-			score += amount;
+			score += amount * bigBoi.bigMultiplier;
 			scoreText.innerHTML = score;
 			
-			//tell the server that their boy got fed
-			socket.emit("feedBoi", amount);
+
+			
+			//tell the server who fed the boi and how much
+			socket.emit("feedBoi", {name: usernameText, scoreToAdd: amount});
+		};
+		
+		//Attempt to add user to server.
+		const attemptAdd = () => {
+			usernameText = document.querySelector("#username").value;
+			
+			if (!usernameText) {
+				usernameText = 'unknown';
+			}
+			socket.emit("tryNewUser", usernameText);
+		};
+		
+		const triggerAccept = () => {
+			console.log("new user accepted");
+			if (Object.keys(users).length >= 2) {
+				gameIsActive = true;
+			}
+			//Lets start the game!
+			if (gameIsActive) {
+				infoText.innerHTML = "Go!";
+				showFeedButtons();
+				hideUserButtons();
+			} else {
+				//only if this is the user
+				for (var inc = 0; inc < Object.keys(users).length; inc ++) {
+					if (Object.keys(users)[inc].name === usernameText) {
+						infoText.innerHTML = "Waiting for another player...";
+					}
+				}
+			}
+		};
+		
+		const triggerReject = () => {
+			console.log("user rejected");
+			infoText.innerHTML = "Sorry, that username is already taken. Enter another one.";
+		};
+		
+		//UI
+		const setUpFeedButtons = () => {
+			//Hook up feed buttons
+			feedFive = document.querySelector('#feedFive');
+			feedFifteen = document.querySelector('#feedFifteen');
+			feedFifty = document.querySelector('#feedFifty');
+			feedHundred = document.querySelector('#feedHundred');
+
+			//Hook up event listenrs to change amount to be added
+			//Likely a more efficient way to do this, but the efficient methods i tried, didnt work
+			feedFive.addEventListener('click', function() {amount = 5;});
+			feedFifteen.addEventListener('click', function() {amount = 15;});
+			feedFifty.addEventListener('click', function() {amount = 50;});
+			feedHundred.addEventListener('click', function() {amount = 100;});
+
+			//then add onclicked events
+			feedFive.addEventListener('click', feedClicked);
+			feedFifteen.addEventListener('click', feedClicked);
+			feedFifty.addEventListener('click', feedClicked);
+			feedHundred.addEventListener('click', feedClicked);
+		};
+		
+		const hideFeedButtons = () => {
+			feedFive.style.visibility = 'hidden';
+			feedFifteen.style.visibility = 'hidden';
+			feedFifty.style.visibility = 'hidden';
+			feedHundred.style.visibility = 'hidden';
+		};
+		
+		const showFeedButtons = () => {
+			feedFive.style.visibility = 'visible';
+			feedFifteen.style.visibility = 'visible';
+			feedFifty.style.visibility = 'visible';
+			feedHundred.style.visibility = 'visible';
+		};
+		
+		const hideUserButtons = () => {
+			connectUser.style.visibility = 'hidden';
+			document.querySelector('#username').style.visibility = 'hidden';
 		};
 		
 
@@ -101,23 +242,38 @@
          left: 10px;
          top: 10px;
          box-shadow: 4px 4px 8px rgba(0,0,0,0.5);
+		 display: block;
       }
 	  
-	  p {
-		border-style: solid;
-		border-width: 3px;
+	  
+	  #feedFive {
+
+	  left: 10px;
+	  margin-top: 15px;
 	  }
 	  
-	  #feed {
-	  position: absolute;
-	  left: 10px;
-	  top: 520px;
+	  #feedFifteen {
+
+		left: 60px;
+		top: 550px;
+	  }
+	  
+	  #feedFifty {
+
+		left: 110px;
+		top: 550px;
+	  }
+	  
+	  #feedHundred {
+
+		left: 160px;
+		top: 550px;
 	  }
 	  
 	  #amount {
 	  position: absolute;
 	  left: 50px;
-	  top: 520px;
+	  top: 550px;
 	  }
 	  
 	  #myScore {
@@ -126,27 +282,76 @@
 	  top: 520px;
 	  }
 		body {
-			margin: 0;
-			display: flex;
+			margin: 15;
+			<!--display: flex;
 			
 			justify-content: center;
-			align-items: center;
+			align-items: center; -->
+		}
+		
+		h2 {
+			text-align: center;
+		}
+		
+		.left {
+			float: left;
+		}
+		.right {
+			float: right;
+		}
+		
+		#canvasDiv {
+			background-color: DodgerBlue;
+			height: 600px;
+			width: 780px;
+			padding: 15px;
+		}
+		
+		#scoreDiv {
+			background-color: gray;
+			float: right;
+			width: 200px;
+			top: 0px;
+		}
+		
+		#username {
+			
+		}
+		
+		#connect {
+			
+		}
+		
+		#information {
+			bottom: 15px;
 		}
 	  </style>
 </head>
 <body>
 
-<canvas id="mainCanvas" width="750" height="500">:c</canvas>
-	<input id="feed" type='button' value='Feed'/>
-	<input id="amount" name="user" type="text"/>
-	<h2><span id="myScore"></span></h2>
+	<div id="canvasDiv">
+		<canvas id="mainCanvas" width="750" height="500">:c</canvas>
+			<input id="feedFive" type='button' value='5'/>
+			<input id="feedFifteen" type='button' value='15'/>
+			<input id="feedFifty" type='button' value='50'/>
+			<input id="feedHundred" type='button' value='100'/>
+			
+			<h2><span id="myScore"></span></h2>
+			
+			<input id="username" name="user" type="text"/>
+			<input id="connect" type='button' value='connect'/>
+			
+			<p id="information"> Please enter a username</p>
+	</div>
 	
-	<p> Feed the boi on the screen and gain points. But if you're the one to feed him
-	too much, you lose. </p>
+	<div id="scoreDiv">
+		<h2> Scores: </h2>
+	</div>
 	
-	<p> When hes half full, he will turn from black to dark red. </p>
-	<p> When hes 90% full, he will turn a brighter red. </p>
-	<p> You'll know when he's 100% full. </p>
+
+	
+
+	
 	
 
 </body>
