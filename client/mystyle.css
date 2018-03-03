@@ -1,0 +1,99 @@
+
+	  #mainCanvas {
+         background: #ffffff;
+         z-index: 0;
+         left: 10px;
+         top: 10px;
+         box-shadow: 4px 4px 8px rgba(0,0,0,0.5);
+		 display: block;
+      }
+	  	  
+	  #feedFive {
+		left: 10px;
+		margin-top: 15px;
+	  }
+	  
+	  #feedFifteen {
+		left: 60px;
+		top: 550px;
+	  }
+	  
+	  #feedFifty {
+		left: 110px;
+		top: 550px;
+	  }
+	  
+	  #feedHundred {
+		left: 160px;
+		top: 550px;
+	  }
+	  
+	  #amount {
+	  position: absolute;
+		left: 50px;
+		top: 550px;
+	  }
+	  
+	  #myScore {
+		position: absolute;
+		left: 50%;
+		top: 520px;
+	  }
+	  
+		body {
+			margin: 15;
+			font-family: sans-serif;
+			background-color: #F0F8FF;
+		}
+		
+		h2 {
+			text-align: center;
+		}
+		
+		li {
+			color: white;
+			font-size: 24px;
+		}
+		
+		.left {
+			float: left;
+		}
+		.right {
+			float: right;
+		}
+		
+		#canvasDiv {
+			background-color: DodgerBlue;
+			height: 600px;
+			width: 780px;
+			padding: 15px;
+			border: 1px solid black;
+		}
+		
+		#scoreDiv {
+			position: absolute;
+			background-color: gray;
+			right: 15px;
+			width: 200px;
+			top: 15px;
+			border: 1px solid black;
+			z-index: 2;
+		}
+		
+		#rules {
+			position: absolute;
+			background-color: DodgerBlue;
+			right: 10px;
+			width: 250px;
+			bottom: 10px;
+			border: 1px solid black;
+			padding: 10px;
+		}
+		
+		#information {
+			bottom: 15px;
+		}
+		
+		.hidden {
+			display: none;
+		}

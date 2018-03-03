@@ -15,10 +15,7 @@
 		//Hold all our users and their scores
 		let users = {};
 		
-		let color;
-		
 		let score = 0;
-		let scoreText;
 		let amount = 0;
 		
 		//feed buttons
@@ -33,6 +30,21 @@
 		//Gamestate boolean
 		let gameIsActive = false;
 		
+		//Image properties
+		//Sprite sheet is 800 X 1867. Three rows of 2, 1 row of 1 img
+		var boiImg = new Image();
+		var boiWidth = 400;
+		var boiHeight = 466.75;
+		var frame = 0;
+		
+		//possible states for our to boi to be in
+		var boiState = {
+			NORMAL: 0,
+			CHUNKY: 1,
+			ENGORGED: 2,
+			DEAD: 3
+		};
+		
 		
 		const init = () => {
 			//Canvas initialization
@@ -44,16 +56,19 @@
 			setUpFeedButtons();
 			hideFeedButtons();
 			
-			//Score and User
-			scoreText = document.querySelector('#myScore');
+			//User
 			
 			connectUser = document.querySelector('#connect');
 			connectUser.addEventListener('click', attemptAdd);
 			
 			//information text update
 			infoText = document.querySelector('#information');
-
 			
+			//image
+			boiImg = document.querySelector('#imgBoi');
+
+			//draw initial frame
+			draw();
 			//Server Thangs
 			socket = io.connect();
 			
@@ -65,80 +80,90 @@
 			socket.on('acceptUser', triggerAccept);
 			socket.on('rejectUser', triggerReject);
 			
-			socket.on('sendUserList', updateUsers);
+			socket.on('sendUserList', updateUsersAndScore);
 			
-			setInterval(updateScores, 1500);
+			setInterval(requestUserList, 1500);
+			setInterval(draw, 125);
 			
 		};
 		
-		const updateScores = () => {
-			socket.emit("requestUsersUpdate");
+		const requestUserList = () => {
+			socket.emit('requestUsersUpdate');
+		};
+		
+		const updateUsersAndScore = (data) => {
+			users = data;
 			
-						
 			//now update text on screen
 			var html = "<h2>Scores</h2>";
-			//temp array to store our sorted users
-			var tempArray;
 			
-			html += "<ol>"
-			for (var inc = 0; inc < Object.keys(users).length; inc++) {
-				//html += "<li>" + Object.keys(users)[inc].name + "</li>";
-				html += "<li>" + users + "</li>";
-			}
+			//Print out texts
+			html += "<ul>"	
 
-			html += "</ol>"
+			var modifier = "";
+
+			
+				for (var p = 0; p < Object.keys(users).length; p++) {
+			
+					//If the name to be displayed is the user
+					if (Object.keys(users)[p] === usernameText) {
+						html += "<li><span style='color:blue'>" + Object.keys(users)[p] + " </span>" + " - " + users[Object.keys(users)[p]] + "</li>";
+					}
+					else {
+						html += "<li>" + Object.keys(users)[p] + " - " + users[Object.keys(users)[p]] + "</li>";
+					}			
+				}
+				
+			html += "</ul>"
 			document.querySelector('#scoreDiv').innerHTML = html;
-		};
-		
-		const updateUsers = (data) => {
-			users = data;
-			console.log("here be user data");
-			console.log(data);
-			//??????????????What? why does the code stop executing past this point?
-			console.log("whats happening to users tho");
-			console.log(users);
-			console.log(data);
 		};
 		
 		const updateBoi = (data) => {
 			bigBoi = data;
-			draw();
 		};
 		
 		const triggerLose = () => {
-			scoreText.innerHTML = "LOSER";
+			infoText.innerHTML = "LOSER";
 			hideFeedButtons();
-
 		};
 		
 		const triggerWin = () => {
-			//here is likely where id pass in an array
-			//of objects containing user scores, then sort them to display to everyone
-			scoreText.innerHTML = `Winner! ${score}`;
+			infoText.innerHTML = "WINNER"
 			hideFeedButtons();
 		};
 		
 		const draw = () => {
 			ctx.clearRect(0,0, canvas.width, canvas.height);
 			
-			//console.log(bigBoi);
-			//console.log(bigBoi.bigColor);
-			//console.log(bigBoi.bigLimit);
+			//alternate frames
+			frame = !frame;	
 
-			let xPos = canvas.width/2 - bigBoi.bigLimit/4
-			let yPos = canvas.height/2 - bigBoi.bigLimit/4
+			//center bottom positioning
+			let xPos = canvas.width/2 - boiWidth/2;
+			let yPos = 35;
 			
-			ctx.fillStyle = bigBoi.bigColor;
-			ctx.fillRect(xPos,yPos, bigBoi.bigLimit/2, bigBoi.bigLimit/2)
-			ctx.beginPath();
-			ctx.lineWidth = "2";
-			ctx.strokeStyle = "black";
-			ctx.rect(xPos, yPos, bigBoi.bigLimit/2, bigBoi.bigLimit/2);
-			ctx.stroke();
+			//Since our sprite sheet only has one image in the last row, lock the frame
+			if (bigBoi.bigState === boiState.DEAD) {
+				frame = 0;
+			}
+			
+			//Draw our boi img
+			ctx.drawImage(boiImg,
+			//sprite width * frame number
+			boiWidth * frame,
+			//sprite height plus state hes in
+			boiHeight * bigBoi.bigState,
+			//general width and heights, positions
+			boiWidth,
+			boiHeight,
+			xPos,
+			yPos,
+			boiWidth,
+			boiHeight		
+			);
 		};
 		
 		const feedClicked = (e) => {
-		
 			//check if num
 			if (isNaN(amount) || amount == '') {
 				return;
@@ -147,9 +172,6 @@
 			amount = parseInt(amount);
 			
 			score += amount * bigBoi.bigMultiplier;
-			scoreText.innerHTML = score;
-			
-
 			
 			//tell the server who fed the boi and how much
 			socket.emit("feedBoi", {name: usernameText, scoreToAdd: amount});
@@ -165,28 +187,32 @@
 			socket.emit("tryNewUser", usernameText);
 		};
 		
-		const triggerAccept = () => {
-			console.log("new user accepted");
+		const triggerAccept = (data) => {
+			//console.log("new user accepted");
 			if (Object.keys(users).length >= 2) {
-				gameIsActive = true;
+				//only for each user in list
+				for (var i = 0; i < Object.keys(users).length; i++) {
+					if (usernameText === Object.keys(users)[i]) {
+						gameIsActive = true;
+					}
+				}
 			}
-			//Lets start the game!
+			//Lets start the game
 			if (gameIsActive) {
 				infoText.innerHTML = "Go!";
 				showFeedButtons();
 				hideUserButtons();
 			} else {
 				//only if this is the user
-				for (var inc = 0; inc < Object.keys(users).length; inc ++) {
-					if (Object.keys(users)[inc].name === usernameText) {
+					if (data === usernameText) {
 						infoText.innerHTML = "Waiting for another player...";
+						hideUserButtons();
 					}
-				}
 			}
 		};
 		
 		const triggerReject = () => {
-			console.log("user rejected");
+			//console.log("user rejected");
 			infoText.innerHTML = "Sorry, that username is already taken. Enter another one.";
 		};
 		
@@ -230,113 +256,23 @@
 			connectUser.style.visibility = 'hidden';
 			document.querySelector('#username').style.visibility = 'hidden';
 		};
-		
 
-		window.onload = init;
+			window.onload = init;
+
+
     
+
     </script>
-	<style>
-	  #mainCanvas {
-         background: #ffffff;
-         z-index: 0;
-         left: 10px;
-         top: 10px;
-         box-shadow: 4px 4px 8px rgba(0,0,0,0.5);
-		 display: block;
-      }
-	  
-	  
-	  #feedFive {
-
-	  left: 10px;
-	  margin-top: 15px;
-	  }
-	  
-	  #feedFifteen {
-
-		left: 60px;
-		top: 550px;
-	  }
-	  
-	  #feedFifty {
-
-		left: 110px;
-		top: 550px;
-	  }
-	  
-	  #feedHundred {
-
-		left: 160px;
-		top: 550px;
-	  }
-	  
-	  #amount {
-	  position: absolute;
-	  left: 50px;
-	  top: 550px;
-	  }
-	  
-	  #myScore {
-	  position: absolute;
-	  left: 50%;
-	  top: 520px;
-	  }
-		body {
-			margin: 15;
-			<!--display: flex;
-			
-			justify-content: center;
-			align-items: center; -->
-		}
-		
-		h2 {
-			text-align: center;
-		}
-		
-		.left {
-			float: left;
-		}
-		.right {
-			float: right;
-		}
-		
-		#canvasDiv {
-			background-color: DodgerBlue;
-			height: 600px;
-			width: 780px;
-			padding: 15px;
-		}
-		
-		#scoreDiv {
-			background-color: gray;
-			float: right;
-			width: 200px;
-			top: 0px;
-		}
-		
-		#username {
-			
-		}
-		
-		#connect {
-			
-		}
-		
-		#information {
-			bottom: 15px;
-		}
-	  </style>
+	<link rel="stylesheet" type="text/css" href="mystyle.css">
 </head>
 <body>
 
 	<div id="canvasDiv">
 		<canvas id="mainCanvas" width="750" height="500">:c</canvas>
-			<input id="feedFive" type='button' value='5'/>
-			<input id="feedFifteen" type='button' value='15'/>
-			<input id="feedFifty" type='button' value='50'/>
-			<input id="feedHundred" type='button' value='100'/>
-			
-			<h2><span id="myScore"></span></h2>
+			<input id="feedFive" type='button' value='Celery'/>
+			<input id="feedFifteen" type='button' value='Tide Pod'/>
+			<input id="feedFifty" type='button' value='Hot Dog'/>
+			<input id="feedHundred" type='button' value='Lard Munch'/>
 			
 			<input id="username" name="user" type="text"/>
 			<input id="connect" type='button' value='connect'/>
@@ -345,8 +281,18 @@
 	</div>
 	
 	<div id="scoreDiv">
-		<h2> Scores: </h2>
+		<h2> Scores </h2>
 	</div>
+	
+	<div id="rules">
+		<p> Feed the fella and score points. </p>
+		<p> Food that is more filling will score you more points. The food options are listed in order
+		of least filling to most filling. </p>
+		<p> As the fella gets fed, he will expand. The bigger he is, the more your points will be multiplied. </p>
+		<p> However, fella can only eat so much. Don't be the one to kill him. </p>
+	</div>
+	
+	<img id="imgBoi" class="hidden"  src="boiSpriteSheetSmaller.png" alt="boi spritesheet" height = "1800" width="800"/>
 	
 
 	

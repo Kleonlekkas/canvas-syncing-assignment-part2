@@ -6,38 +6,42 @@ const fs = require('fs'); // grab our file system
 
 const PORT = process.env.PORT || process.env.NODE_PORT || 3000;
 
+const boiImage = fs.readFileSync(`${__dirname}/../client/boiSpriteSheetSmaller.png`);
 
-// BIG BOI PROPERTIES
-// some arbitrary random but big limit
-const limit = Math.floor((Math.random() * 99) * 3) + 300;
-const color = `rgb(${0}, ${0}, ${0})`;
-const currentValue = 0;
-// Multiplier increases as bigBoi reaches his limit. Gain more points for feeding him
-const multiplier = 1;
-// a bit redundant code, but i think its slightly neater
+const cssStyle = fs.readFileSync(`${__dirname}/../client/mystyle.css`);
 
 
 const users = {};
 
-let gameIsActive = true;
-
+// BigBoi PROPERTIES
+// limit is a randomly generated number which will determine the amount he can be fed.
+// Multiplier increases the closer he is to his limit. Score more later in game
 const bigBoi = {
-  bigLimit: limit,
-  bigColor: color,
-  bigCurrentValue: currentValue,
-  bigMultiplier: multiplier,
+  bigLimit: Math.floor((Math.random() * 99) * 50) + 10000,
+  bigState: 0,
+  bigCurrentValue: 0,
+  bigMultiplier: 1,
 };
 
 const handler = (req, res) => {
-  fs.readFile(`${__dirname}/../client/index.html`, (err, data) => {
-    // if err, throw it for now
-    if (err) {
-      throw err;
-    }
-
+  // load our img spritesheet
+  if (req.url === '/boiSpriteSheetSmaller.png') {
+    res.writeHead(200, { 'Content-Type': 'image/png' });
+    res.end(boiImage);
+  }
+  if (req.url === '/mystyle.css') {
     res.writeHead(200);
-    res.end(data);
-  });
+    res.end(cssStyle);
+  } else {
+    fs.readFile(`${__dirname}/../client/index.html`, (err, data) => {
+      // if err, throw it for now
+      if (err) {
+        throw err;
+      }
+      res.writeHead(200);
+      res.end(data);
+    });
+  }
 };
 
 // create new server
@@ -56,36 +60,35 @@ io.on('connection', (socket) => {
   socket.emit('updated', bigBoi);
 
   socket.on('feedBoi', (data) => {
-    if (gameIsActive) {
-      // Add the amount fed to the boys current value
-      bigBoi.bigCurrentValue += data.scoreToAdd;
-      users[data.name].score += data.scoreToAdd;
+    // Add the amount fed to the boys current value
+    bigBoi.bigCurrentValue += data.scoreToAdd;
+    users[data.name] += (data.scoreToAdd * bigBoi.bigMultiplier);
 
-      // change the color if the boy getting big
-      // only send update if the color has to change
-      if (bigBoi.bigCurrentValue / bigBoi.bigLimit >= 0.9) {
-        bigBoi.bigColor = `rgb(${220}, ${20}, ${60})`;
-        bigBoi.bigMultiplier = 50;
-        io.sockets.in('genericRoom').emit('updated', bigBoi);
-      } else if (bigBoi.bigCurrentValue / bigBoi.bigLimit >= 0.5) {
-        bigBoi.bigColor = `rgb(${139}, ${0}, ${0})`;
-        bigBoi.bigMultiplier = 15;
-        io.sockets.in('genericRoom').emit('updated', bigBoi);
-      }
+    // change the sprite index if the boy is getting big
+    // only send update if the color has to change
+    if (bigBoi.bigCurrentValue / bigBoi.bigLimit >= 0.85) {
+      bigBoi.bigState = 2; // Engorged state
+      bigBoi.bigMultiplier = 50;
+      io.sockets.in('genericRoom').emit('updated', bigBoi);
+    } else if (bigBoi.bigCurrentValue / bigBoi.bigLimit >= 0.5) {
+      bigBoi.bigState = 1;// kinda chubby state
+      bigBoi.bigMultiplier = 15;
+      io.sockets.in('genericRoom').emit('updated', bigBoi);
+    }
 
-      // If the player is the one to exceed the limit
-      if (bigBoi.bigCurrentValue >= bigBoi.bigLimit) {
-        console.log('Player loses');
-        bigBoi.bigColor = `rgb(${255}, ${0}, ${0})`;
-        io.sockets.in('genericRoom').emit('updated', bigBoi);
-        // Send to the player who triggered it
-        socket.emit('lose');
-        // Send to everyone else
-        socket.to('genericRoom').emit('win');
-        // update scores one last time
-        io.sockets.in('genericRoom').emit('sendUserList', users);
-        gameIsActive = false;
-      }
+    // If the player is the one to exceed the limit
+    if (bigBoi.bigCurrentValue >= bigBoi.bigLimit) {
+      // console.log('Player loses');
+      bigBoi.bigState = 3;// dead state
+      io.sockets.in('genericRoom').emit('updated', bigBoi);
+      // Send to the player who triggered it
+      socket.emit('lose');
+      // and set their score to 0
+      users[data.name] = 0;
+      // Send to everyone else
+      socket.to('genericRoom').emit('win');
+      // update scores one last time
+      io.sockets.in('genericRoom').emit('sendUserList', users);
     }
   });
 
@@ -97,7 +100,7 @@ io.on('connection', (socket) => {
     // Check to see if user is in list already
     for (let inc = 0; inc < Object.keys(users).length; inc++) {
       if (Object.keys(users)[inc] === nameToAdd) {
-        console.log('user ALRREADY IN HERE THO');
+        // console.log('user ALRREADY IN HERE THO');
         userIsNew = false;
         // REJECT USER
         socket.emit('rejectUser');
@@ -107,21 +110,21 @@ io.on('connection', (socket) => {
 
     if (userIsNew) {
       // ADD USER
-      const newUser = {
-        name: nameToAdd,
-        score: 0,
-      };
-      users[nameToAdd] = newUser;
+      // Key will be the player name, and their value will be their score
+      users[nameToAdd] = 0;
       // sendListOfUsers
       io.sockets.in('genericRoom').emit('sendUserList', users);
-      io.sockets.in('genericRoom').emit('acceptUser');
-      console.log(users);
+      // return name to the accept user emit
+      io.sockets.in('genericRoom').emit('acceptUser', nameToAdd);
+      // console.log(users);
+      // also increase the limit a bit so it scales with users
+      bigBoi.bigLimit += 5000;
     }
   });
 
   socket.on('requestUsersUpdate', () => {
     socket.emit('sendUserList', users);
-    console.log(users);
+    // console.log(users);
   });
 
   // when people leave, remove them from room
